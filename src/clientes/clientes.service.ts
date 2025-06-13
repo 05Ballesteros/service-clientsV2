@@ -85,16 +85,26 @@ export class ClientesService {
 
   //Obtener selectData
   async obtenerSelectData() {
-    const dependencias = await this.dependenciaModel.find().exec();
-    const direccionesGenerales = await this.direccionGeneralModel.find().exec();
-    const direccionesAreas = await this.direccionAreaModel.find().exec();
-    if (!dependencias || !direccionesGenerales || !direccionesAreas) {
+    const direccionesGenerales = await this.direccionGeneralModel.find().sort({ Direccion_General: 1 }).exec();
+    const direccionesAreas = await this.direccionAreaModel.find().sort({ direccion_area: 1 }).exec();
+    if (!direccionesGenerales || !direccionesAreas) {
       return false;
     }
+
+    const groupedDGenerales = direccionesGenerales.map((dg) => ({
+      label: dg.Direccion_General,
+      value: dg._id,
+    }));
+
+    const groupedDAreas = direccionesAreas.map((da) => ({
+      label: da.direccion_area,
+      value: da._id,
+    }));
+
     return {
-      dependencias,
-      direccionesGenerales,
-      direccionesAreas,
+      dareas: groupedDAreas,
+      dgenerales: groupedDGenerales,
     };
+
   }
 }
