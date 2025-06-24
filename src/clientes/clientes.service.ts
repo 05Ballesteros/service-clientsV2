@@ -7,6 +7,7 @@ import { Model, Types } from 'mongoose';
 import { Dependencia } from './schemas/Dependencia.schema';
 import { Direccionarea } from './schemas/Direccion_area.schema';
 import { Direccion_general } from './schemas/Direccion_general.schema';
+import { registrarDatosExtra } from 'src/common/utils/datosExtra.utils';
 
 @Injectable()
 export class ClientesService {
@@ -19,7 +20,7 @@ export class ClientesService {
   ) { }
 
   //Crear cliente, se valida mediante el correo si el cliente ya existe.
-  async crearCliente(clienteDto: CreateClienteDto): Promise<Clientes> {
+  async crearCliente(clienteDto: CreateClienteDto) {
     try {
       const { Correo } = clienteDto;
       const cilenteExistence = await this.clienteModel.findOne({ Correo }).exec();
@@ -28,13 +29,23 @@ export class ClientesService {
       }
       const clienteInstance = new this.clienteModel({
         ...clienteDto,
-        Dependencia: clienteDto.Dependencia ? new Types.ObjectId(clienteDto.Dependencia) : undefined,
         Direccion_General: clienteDto.Direccion_General ? new Types.ObjectId(clienteDto.Direccion_General) : undefined,
         direccion_area: clienteDto.direccion_area ? new Types.ObjectId(clienteDto.direccion_area) : undefined,
       });
 
+      if (clienteDto.nuevaDArea || clienteDto.nuevaDGeneral) {
+        const resDatos = await registrarDatosExtra(clienteDto, this.direccionGeneralModel, this.direccionAreaModel)
+        if (!resDatos) return;
 
-      return clienteInstance.save();
+        if (resDatos.Direccion_General) clienteInstance.Direccion_General = new Types.ObjectId(resDatos.Direccion_General);
+        if (resDatos.direccion_area) clienteInstance.direccion_area = new Types.ObjectId(resDatos.direccion_area);
+
+      }
+
+
+      const guardarCliente = await clienteInstance.save();
+      if (!guardarCliente) throw new BadRequestException("Error al guardar la informacion del cliente.");
+      return { message: "El cliente fue creado exitosamente" };
     } catch (error) {
       console.error(error);
       throw new BadRequestException('Error interno del servidor');
@@ -63,20 +74,28 @@ export class ClientesService {
     return cliente;
   }
 
-  async update(id: string, updateClienteDto: UpdateClienteDto): Promise<Clientes> {
+  async update(id: string, updateClienteDto: UpdateClienteDto) {
     const updateData = {
       ...updateClienteDto,
-      Dependencia: updateClienteDto.Dependencia ? new Types.ObjectId(updateClienteDto.Dependencia) : undefined,
       Direccion_General: updateClienteDto.Direccion_General ? new Types.ObjectId(updateClienteDto.Direccion_General) : undefined,
       direccion_area: updateClienteDto.direccion_area ? new Types.ObjectId(updateClienteDto.direccion_area) : undefined,
     };
 
-    const updatedCliente = await this.clienteModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+    if (updateClienteDto.nuevaDArea || updateClienteDto.nuevaDGeneral) {
+      const resDatos = await registrarDatosExtra(updateClienteDto, this.direccionGeneralModel, this.direccionAreaModel)
+      if (!resDatos) return;
+
+      if (resDatos.Direccion_General) updateData.Direccion_General = resDatos.Direccion_General ? new Types.ObjectId(resDatos.Direccion_General) : undefined;
+      if (resDatos.direccion_area) updateData.direccion_area = resDatos.direccion_area ? new Types.ObjectId(resDatos.direccion_area) : undefined;
+
+    }
+
+    const updatedCliente = await this.clienteModel.findOneAndUpdate({ _id: id }, { $set: updateData });
     if (!updatedCliente) {
       throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
     }
 
-    return updatedCliente;
+    return { message: "La información del cliente fue modificada con éxito" };
   }
 
   remove(id: number) {

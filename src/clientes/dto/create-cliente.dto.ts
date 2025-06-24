@@ -32,4 +32,12 @@ export class CreateClienteDto {
     @IsString()
     @IsOptional()
     Ubicacion?: string;
+
+    @IsString()
+    @IsOptional()
+    nuevaDArea?: string;
+
+    @IsString()
+    @IsOptional()
+    nuevaDGeneral?: string;
 }

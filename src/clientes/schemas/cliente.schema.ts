@@ -1,15 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-@Schema({ collection: 'Clientes' }) 
+@Schema({ collection: 'Clientes' })
 export class Clientes extends Document {
   @Prop({ required: true })
   Nombre: string;
 
-  @Prop({ required: true, unique: true})
+  @Prop({ required: true, unique: true })
   Correo: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Dependencia', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'Dependencia', required: true, default: new Types.ObjectId('679b8a12c9c34d1de358f1cd'), })
   Dependencia: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Direccion_general' })
