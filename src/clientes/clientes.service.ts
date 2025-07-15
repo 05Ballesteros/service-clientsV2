@@ -7,11 +7,13 @@ import { Model, Types } from 'mongoose';
 import { Dependencia } from './schemas/Dependencia.schema';
 import { Direccionarea } from './schemas/Direccion_area.schema';
 import { Direccion_general } from './schemas/Direccion_general.schema';
+import { LogsService } from 'src/services/logs.service';
 
 @Injectable()
 export class ClientesService {
 
   constructor(
+    private readonly logsService: LogsService,
     @InjectModel(Clientes.name) private readonly clienteModel: Model<Clientes>,
     @InjectModel(Dependencia.name) private readonly dependenciaModel: Model<Dependencia>,
     @InjectModel(Direccionarea.name) private readonly direccionAreaModel: Model<Direccionarea>,
@@ -19,24 +21,30 @@ export class ClientesService {
   ) { }
 
   //Crear cliente, se valida mediante el correo si el cliente ya existe.
-  async crearCliente(clienteDto: CreateClienteDto): Promise<Clientes> {
+  async crearCliente(clienteDto: CreateClienteDto, token: string) {
+    console.log(clienteDto);
+    const DEFAULT_DEPENDENCIA = "679b8a12c9c34d1de358f1cd";
+    const { Correo } = clienteDto;
     try {
-      const { Correo } = clienteDto;
       const cilenteExistence = await this.clienteModel.findOne({ Correo }).exec();
       if (cilenteExistence) {
+        console.log("Este correo ya está registrado para un cliente");
+        const savedlog = await this.logsService.enviarLog({ Correo: Correo }, "clienteNoCreado", token);
         throw new BadRequestException('Este correo ya está registrado para un cliente');
       }
       const clienteInstance = new this.clienteModel({
         ...clienteDto,
-        Dependencia: clienteDto.Dependencia ? new Types.ObjectId(clienteDto.Dependencia) : undefined,
-        Direccion_General: clienteDto.Direccion_General ? new Types.ObjectId(clienteDto.Direccion_General) : undefined,
-        direccion_area: clienteDto.direccion_area ? new Types.ObjectId(clienteDto.direccion_area) : undefined,
+        Dependencia: clienteDto.Dependencia ? new Types.ObjectId(clienteDto.Dependencia) : new Types.ObjectId(DEFAULT_DEPENDENCIA),
+        Direccion_General: clienteDto.Direccion_General ? new Types.ObjectId(clienteDto.Direccion_General.value) : undefined,
+        direccion_area: clienteDto.direccion_area ? new Types.ObjectId(clienteDto.direccion_area.value) : undefined,
       });
-
-
-      return clienteInstance.save();
+      console.log("clienteInstance", clienteInstance);
+      if (clienteInstance) {
+        const savedlog = await this.logsService.enviarLog({ Cliente: Correo }, "clienteCreado", token);
+        return clienteInstance.save();
+      }
     } catch (error) {
-      console.error(error);
+      const savedlog = await this.logsService.enviarLog({ Correo: Correo }, "clienteNoCreado", token, error);
       throw new BadRequestException('Error interno del servidor');
     }
   }
@@ -63,20 +71,46 @@ export class ClientesService {
     return cliente;
   }
 
-  async update(id: string, updateClienteDto: UpdateClienteDto): Promise<Clientes> {
-    const updateData = {
-      ...updateClienteDto,
-      Dependencia: updateClienteDto.Dependencia ? new Types.ObjectId(updateClienteDto.Dependencia) : undefined,
-      Direccion_General: updateClienteDto.Direccion_General ? new Types.ObjectId(updateClienteDto.Direccion_General) : undefined,
-      direccion_area: updateClienteDto.direccion_area ? new Types.ObjectId(updateClienteDto.direccion_area) : undefined,
-    };
+  async update(id: string, updateClienteDto: UpdateClienteDto, token: string) {
+    console.log(updateClienteDto);
+    try {
+      const updateData: any = {
+        ...updateClienteDto,
+      };
 
-    const updatedCliente = await this.clienteModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
-    if (!updatedCliente) {
-      throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
+      // Solo sobrescribir Direccion_General si viene en el update
+      if (updateClienteDto.Direccion_General) {
+        updateData.Direccion_General = new Types.ObjectId(
+          typeof updateClienteDto.Direccion_General === 'string'
+            ? updateClienteDto.Direccion_General
+            : updateClienteDto.Direccion_General.value
+        );
+      }
+
+      if (updateClienteDto.direccion_area) {
+        updateData.direccion_area = new Types.ObjectId(
+          typeof updateClienteDto.direccion_area === 'string'
+            ? updateClienteDto.direccion_area
+            : updateClienteDto.direccion_area.value
+        );
+      }
+
+      const updatedCliente = await this.clienteModel.findByIdAndUpdate(id, updateData, {
+        new: true,
+      }).exec();
+
+      if (!updatedCliente) {
+        throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
+      }
+
+      if (updatedCliente) {
+        const savedlog = await this.logsService.enviarLog({ Cliente: updatedCliente.Correo }, "clienteActualizado", token);
+        return updatedCliente;
+      }
+    } catch (error) {
+      const savedlog = await this.logsService.enviarLog({ Correo: "Correo" }, "clienteNoActualizado", token, error);
+      throw new BadRequestException('Error interno del servidor');
     }
-
-    return updatedCliente;
   }
 
   remove(id: number) {

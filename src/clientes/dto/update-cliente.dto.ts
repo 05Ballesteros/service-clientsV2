@@ -2,6 +2,11 @@ import { PartialType } from '@nestjs/mapped-types';
 import { CreateClienteDto } from './create-cliente.dto';
 import { IsEmail, IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
+interface LabeledValue {
+    label: string;
+    value: string;
+}
+
 export class UpdateClienteDto extends PartialType(CreateClienteDto) {
     @IsString()
     @IsNotEmpty({message: "El nombre no puede quedar vació."})
@@ -13,11 +18,11 @@ export class UpdateClienteDto extends PartialType(CreateClienteDto) {
 
     @IsMongoId()
     @IsOptional()
-    Direccion_General?: string;
+    Direccion_General?: LabeledValue;
 
     @IsMongoId()
     @IsOptional()
-    direccion_area?: string;
+    direccion_area?: LabeledValue;
 
     @IsString()
     @IsNotEmpty()

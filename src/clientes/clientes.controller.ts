@@ -5,6 +5,7 @@ import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { Roles } from 'src/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/jwt-roles.guard';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { Token } from 'src/decorators/token.decorator';
 
 @Controller('clients')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -12,8 +13,8 @@ export class ClientesController {
   constructor(private readonly clientesService: ClientesService) { }
 
   @Post()
-  create(@Body() createClienteDto: CreateClienteDto) {
-    return this.clientesService.crearCliente(createClienteDto);
+  create(@Body() createClienteDto: CreateClienteDto, @Token() token: string) {
+    return this.clientesService.crearCliente(createClienteDto, token);
   }
 
   @Get()
@@ -24,8 +25,8 @@ export class ClientesController {
 
   @Put(':id')
   @Roles('Root', 'Administrador')
-  update(@Param('id') id: string, @Body() updateClienteDto: UpdateClienteDto) {
-    return this.clientesService.update(id, updateClienteDto);
+  update(@Param('id') id: string, @Body() updateClienteDto: UpdateClienteDto, @Token() token: string) {
+    return this.clientesService.update(id, updateClienteDto, token);
   }
 
   @Get('selectData')

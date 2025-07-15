@@ -1,5 +1,10 @@
 import { IsString, IsEmail, IsNotEmpty, IsOptional, IsMongoId } from "class-validator";
 
+interface LabeledValue {
+    label: string;
+    value: string;
+}
+
 export class CreateClienteDto {
     @IsString()
     @IsNotEmpty()
@@ -15,11 +20,11 @@ export class CreateClienteDto {
 
     @IsMongoId()
     @IsOptional()
-    Direccion_General?: string;
+    Direccion_General?: LabeledValue;
 
     @IsMongoId()
     @IsOptional()
-    direccion_area?: string;
+    direccion_area?: LabeledValue;
 
     @IsString()
     @IsNotEmpty()
